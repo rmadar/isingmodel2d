@@ -3,11 +3,10 @@ import matplotlib.pyplot as plt
 
 
 class spinLattice:
-
     
     def __init__(self, N):
         self.spins = 2*np.random.randint(2, size=(N,N))-1
-
+        
 
     def align(self):
         '''
@@ -98,7 +97,8 @@ class spinLattice:
         and they are then flipped or not, based on the precedently computed
         decision. By default, n is set to 10% of the spins.
         
-        Modify in place the spin lattice, and return the modified spin lattice.
+        Modify in place the spin lattice, and return a copy of the modified 
+        spin lattice.
         '''
         
         # Prepare shifted arrays for vectorized computation
@@ -128,14 +128,18 @@ class spinLattice:
         self.spins[Xs, Ys] *= -1 * flip[Xs, Ys] + 1 * ~flip[Xs, Ys]
 
         # Return the spin lattice
-        return self.spins
+        return self.spins.copy()
         
         
     def twoPtsCorr(self, T, nEvolution):
         '''
         Compute the correlation function as function of the distance:
-            G(r) = < s0-<s0> > * <sj - <sj> >
-        where r = d(0, j). The mean are computed over Ntime thermal evolutions.
+            G(r) = < si-<si> > * <sj - <sj> >
+        where r is the distance d(i, j) between spin i and spin j.
+        The mean are computed over Ntime thermal evolutions. In practice,
+        the spin in the middle of the lattice is taken as reference. What
+        is computed is then:
+           G(r) = < s0-<s0> > * <sj - <sj> >
             
         First a serie of nEvolution spin states are generated at temperature T
         leading to a (Ntime, N, N) array where the first dimension
@@ -146,10 +150,10 @@ class spinLattice:
         '''
 
         # Computing nEvolution states of the spin lattice
-        a = np.array([self.thermalEvolution(T).copy() for i in np.arange(nEvolution)])
+        a = np.array([self.thermalEvolution(T) for _ in np.arange(nEvolution)])
 
         # Take the center of the lattice
-        N = self.spins.shape[0]
+        N = self.spins.shape[1]
         x0, y0 = int(N/2), int(N/2)
         s0 = a[:, x0, y0]
         
