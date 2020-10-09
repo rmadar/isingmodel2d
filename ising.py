@@ -36,6 +36,22 @@ class spinLattice:
         self.spins *= flip
 
         
+    def perturbate(self, x0, y0, R):
+        '''
+        Put all spins in -1 state in a give region
+        defined as a circle centered in (x0, y0) and
+        of radius R. x0, y0 and R are expressed in lattice
+        unit.
+        '''
+        N = self.spins.shape[0]
+        x, y = np.meshgrid(np.arange(N), np.arange(N))
+        x, y = x.flatten(), y.flatten()
+
+        d = np.sqrt((x-x0)**2  + (y-y0)**2)
+        xPert, yPert = x[d<R], y[d<R]
+        self.spins[xPert, yPert] = -1
+
+        
     def plot(self):
         '''
         Plotting a snapshot of the 2D spins lattice.
