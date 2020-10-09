@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-
+import matplotlib.animation as animation
 
 class spinLattice:
     
@@ -145,13 +145,21 @@ class spinLattice:
         leading to a (Ntime, N, N) array where the first dimension
         is the temporal evolution at thermal equilibrium.
             
+        The state of the spin Lattice is not affected by the calculation.
+
         Return 2 1D-array of shape (N*N - 1) correponding to all pairs (0, j)
           - r (array of distance), g (array of correlations)
         '''
 
+        # Save initial state
+        initState = self.spins.copy()
+        
         # Computing nEvolution states of the spin lattice
         a = np.array([self.thermalEvolution(T) for _ in np.arange(nEvolution)])
 
+        # Setup the spin state as it was
+        self.spins = initState
+        
         # Take the center of the lattice
         N = self.spins.shape[1]
         x0, y0 = int(N/2), int(N/2)
@@ -191,6 +199,8 @@ class spinLattice:
         iterations to measure system properties. Those are done for each
         temperatures, scanning from Tmin to Tmax using nT steps.
     
+        The state of the spin lattice is not modified by a simulation.
+
         Returning several 1D np.array as function of temperature:
           - temperature, energy, magnetization, entropy
         
@@ -203,6 +213,9 @@ class spinLattice:
                                       lowest energy configuration is taken
           - revert [default: false]: scan temperatures from hottest to coldest.
         '''
+
+        # Save initial state
+        initState = self.spins.copy()
         
         # Initialize arrays
         Ts = np.linspace(Tmin, Tmax, nT)
@@ -249,4 +262,51 @@ class spinLattice:
             Ms[iT] = np.mean(m)
             Ss[iT] = np.mean(s)
 
+        # Setup the spin state as it was
+        self.spins = initState
+
+        # Return the results
         return Ts, Es, Ms, Ss
+
+
+    def animate(self, T, nEvolutions=50, saveName='', interval=50):
+
+        '''
+        Create a animation of spin lattice evolution at a temperature
+        T, for nEvolutions steps. The output video can be saved under
+        'saveName' (if empty, the video is not saved).
+
+        The state of the spin lattice is not modified by an animation.
+
+        Return the animation. To be displayed in a notebook, do
+        >>> from IPython.display import HTML
+        >>> anim = s.animate(T, N)
+        >>> HTML(anim.to_html5_video())
+        '''
+
+        initState = self.spins.copy()
+        imgs = [self.thermalEvolution(T) for _ in range(nEvolutions)]
+        self.spins = initState
+        
+        def init():
+            img.set_data(imgs[0])
+            return (img,)
+
+        def animate(i):
+            img.set_data(imgs[i])
+            return (img,)
+
+        fig = plt.figure()
+        ax  = fig.gca()
+        ax.xaxis.set_visible(False)
+        ax.yaxis.set_visible(False)
+        img = ax.imshow(imgs[0],  cmap='BuPu', origin='bottom')
+        anim = animation.FuncAnimation(fig, animate, init_func=init, frames=len(imgs),
+                                       interval=interval, blit=True, save_count=len(imgs))
+        plt.tight_layout()
+        
+        # Set up formatting for the movie files
+        if saveName:
+            anim.save('{}.gif'.format(saveName), writer='imagemagick', fps=60)
+
+        return anim
