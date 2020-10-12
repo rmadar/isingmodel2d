@@ -19,6 +19,7 @@ class spinLattice:
         '''
         Anti-align all spins. Possible if N is even (raise an error otherwise).
         '''
+        N = self.spins.shape[0]
         if N%2 != 0:
             raise NameError('Anti-alligned spin system must have an even N')
         l1 = np.zeros(N) + 1

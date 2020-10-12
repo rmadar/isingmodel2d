@@ -11,7 +11,7 @@ spins.perturbate(100, 400, 50)
 spins.perturbate(400, 100, 50)
 
 # Animation below critical temperature
-aBelowTc = spins.animate(T=2.1 , nEvolutions=200, saveName='AnimBelowTc')
+aBelowTc = spins.animate(T=2.1 , nEvolutions=200, saveName='../plots/AnimBelowTc')
 
 # Animation above critical temperature
-aAboveTc = spins.animate(T=2.5, nEvolutions=200, saveName='AnimAboveTc')
+aAboveTc = spins.animate(T=2.5, nEvolutions=200, saveName='../plots/AnimAboveTc')
