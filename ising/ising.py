@@ -24,7 +24,7 @@ class spinLattice:
         self.spins  = 2*np.random.randint(2, size=(N,N))-1
         self.extH   = externalField
         self.Jx     = Jx
-        self.Jy     = Jx
+        self.Jy     = Jy
         self.Nint   = Nint
         self.cost   = self.costIsing
         self.energy = self.energyIsing
