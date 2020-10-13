@@ -15,3 +15,9 @@ they tend to disappear above the critical temperature.
 |:-----:|:------:|
 | ![](plots/AnimBelowTc.gif) | ![](plots/AnimAboveTc.gif) |
 
+
+
+|  1 neighboor | 3 neighboors  |  10 neighboors |
+|:-----:|:------:|:-----:|
+| ![](plots/AnimInter1.gif) | ![](plots/AnimInter3.gif) | ![](plots/AnimInter10.gif) |
+
