@@ -1,6 +1,11 @@
 # Ising Model at Two Dimension
 
 This repository hots a python implementation of the Ising model in 2 dimensions, exploring phase transition physics.
+The simulation allows for:
+  + external magnetic field
+  + anisotropy between x and y direction
+  + more interacting neighboors
+
 
 |  Magnetization(T) |  2-points correlation  |
 |:-----------------:|:----------------------:|
