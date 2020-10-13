@@ -4,10 +4,35 @@ import matplotlib.animation as animation
 
 class spinLattice:
     
-    def __init__(self, N):
-        self.spins = 2*np.random.randint(2, size=(N,N))-1
-        
+    def __init__(self, N, externalField=0, Jx=1, Jy=1, Nint=0):
+        '''
+        Create an object 2D spinLattice of size NxN with an 
+        external field H (0 by default), and two coupling Jx, 
+        Jy in both directions (1 by default). The energy of 
+        the system is modified by the external field by adding
+        a term -extH*sum(s).
 
+        Arguments:
+        ----------
+        N: lattice of size NxN
+        externalField: intensity of the external magnetic field
+        Jx: coupling constant in the x-axis
+        Jy: coupling constant in the y-axis
+        Nint: number of interacting neighboor spins.
+        '''
+        
+        self.spins  = 2*np.random.randint(2, size=(N,N))-1
+        self.extH   = externalField
+        self.Jx     = Jx
+        self.Jy     = Jx
+        self.Nint   = Nint
+        self.cost   = self.costIsing
+        self.energy = self.energyIsing
+        if self.Nint > 0:
+            self.cost = self.costNint
+            self.energy = self.energyNint
+
+            
     def align(self):
         '''
         Align all spins together
@@ -37,10 +62,10 @@ class spinLattice:
         self.spins *= flip
 
         
-    def perturbate(self, x0, y0, R):
+    def perturbate(self, x0, y0, R, s=-1):
         '''
-        Put all spins in -1 state in a give region
-        defined as a circle centered in (x0, y0) and
+        Put all spins in s state (-1 by default) in a give 
+        region defined as a circle centered in (x0, y0) and
         of radius R. x0, y0 and R are expressed in lattice
         unit.
         '''
@@ -50,7 +75,7 @@ class spinLattice:
 
         d = np.sqrt((x-x0)**2  + (y-y0)**2)
         xPert, yPert = x[d<R], y[d<R]
-        self.spins[xPert, yPert] = -1
+        self.spins[xPert, yPert] = s
 
         
     def plot(self):
@@ -59,28 +84,61 @@ class spinLattice:
         '''
         plt.gca().xaxis.set_visible(False)
         plt.gca().yaxis.set_visible(False)
-        plt.imshow(self.spins.copy(), cmap='BuPu', origin='bottom')
+        plt.imshow(self.spins.copy(), cmap='BuPu', origin='bottom', vmin=-1.0, vmax=1.0)
 
 
-    def energy(self):
+    def energyIsing(self):
         '''
         Compute and return the energy of the lattice, 
         normalized to the number of spins.
         '''
     
         # Prepare shifted arrays for vectorized computation
-        sPad = np.pad(self.spins, (1, 1)) # Padding with 0
-        sUp = sPad[0:-2, 1:-1]            # Bring up neighbour to the current node
-        sDo = sPad[2:  , 1:-1]            # Bring down neighbour to the current node
-        sLe = sPad[1:-1, 0:-2]            # Bring left neighbour to the current node
-        sRi = sPad[1:-1, 2:  ]            # Bring right neighbour to the current node
+        sPad = np.pad(self.spins,  (1, 1)) # Padding with 0
+        sdY  = sPad[0:-2, 1:-1]            # Bring neighbour in y to the current node
+        sdX  = sPad[1:-1, 0:-2]            # Bring neighbour in x to the current node
         
         # energy = -1/4 s*up + s*down + s*left + s*right
-        energy = -1./4. * self.spins * (sUp+sDo+sLe+sRi)
+        energy = -1./2. * self.spins * ( self.Jx*sdX + self.Jy*sdY )
         
-        # Sum over the lattice
-        return energy.sum() / self.spins.size
+        # Sum over the lattice and energy due to external field
+        return energy.sum() / self.spins.size - self.extH * self.magnetization()
 
+
+    def energyNint(self):
+        '''
+        Compute the energy in case on N interactions.
+        '''
+        
+        # Container for the final energy computation
+        N = self.Nint
+        energy = np.zeros_like(self.spins, dtype=np.float64)
+    
+        # Prepare shifted arrays for vectorized computation                              
+        sPad = np.pad(self.spins, (N, N)) # Padding with 0                              
+        
+        Npairs = 0
+        for i in range(N+1):
+            for j in range(N+1):
+                if (i, j) == (0, 0): continue
+                if abs(i) == abs(j): continue
+                J = (i*self.Jx + j*self.Jy) / np.sqrt(i**2+j**2)
+                yStart, yEnd = N+j, -N+j
+                xStart, xEnd = N+i, -N+i
+                if xEnd == 0:
+                    xEnd = None
+                if yEnd == 0:
+                    yEnd = None
+                    
+                energy += - J * self.spins * sPad[yStart:yEnd, xStart:xEnd]
+                Npairs += 1
+        
+        # Remove double counting of since (i, j) and (i, j) should be counted once.
+        energy /= Npairs                                                                               
+        
+        # Sum over the lattice and energy due to external field
+        return energy.sum() / self.spins.size - self.extH * self.magnetization()
+    
     
     def magnetization(self):
         '''
@@ -105,6 +163,51 @@ class spinLattice:
             return 0
 
 
+    def costNint(self):
+        '''
+        Return the cost in case of N interactions.
+        '''
+        
+        # Container for the final energy computation
+        N = self.Nint
+        cost = np.zeros_like(self.spins, dtype=np.float64)
+    
+        # Prepare shifted arrays for vectorized computation                              
+        sPad = np.pad(self.spins, (N, N)) # Padding with 0
+        
+        for i in range(-N, N+1):
+            for j in range(-N, N+1):
+                if (i, j) == (0, 0): continue
+                if abs(i) == abs(j): continue
+                J = (abs(i)*self.Jx + abs(j)*self.Jy) / np.sqrt(i**2+j**2)
+                yStart, yEnd = N+j, -N+j
+                xStart, xEnd = N+i, -N+i
+                if xEnd == 0:
+                    xEnd = None
+                if yEnd == 0:
+                    yEnd = None
+                    
+                cost += 2 * J * self.spins * sPad[yStart:yEnd, xStart:xEnd]
+                                             
+        return cost - 2 * self.spins * self.extH 
+
+    
+    def costIsing(self):
+        '''
+        Return the cost in case of vanilla Ising model.
+        '''
+
+        # Prepare shifted arrays for vectorized computation
+        sPad = np.pad(self.spins, (1, 1))     # Padding with 0
+        sUp = sPad[0:-2, 1:-1]                # Bring up neighbour to the current node
+        sDo = sPad[2:  , 1:-1]                # Bring down neighbour to the current node
+        sLe = sPad[1:-1, 0:-2]                # Bring left neighbour to the current node
+        sRi = sPad[1:-1, 2:  ]                # Bring right neighbour to the current node
+
+        # Energy cost
+        return 2 * self.spins * ( self.Jx*(sLe+sRi) + self.Jy*(sUp+sDo) ) - 2 * self.spins * self.extH
+
+        
     def thermalEvolution(self, T, n=-1):
         '''
         Update the spin lattice based on a Metropolis algorithm.
@@ -117,14 +220,7 @@ class spinLattice:
         Modify in place the spin lattice, and return a copy of the modified 
         spin lattice.
         '''
-        
-        # Prepare shifted arrays for vectorized computation
-        sPad = np.pad(self.spins, (1, 1))     # Padding with 0
-        sUp = sPad[0:-2, 1:-1]                # Bring up neighbour to the current node
-        sDo = sPad[2:  , 1:-1]                # Bring down neighbour to the current node
-        sLe = sPad[1:-1, 0:-2]                # Bring left neighbour to the current node
-        sRi = sPad[1:-1, 2:  ]                # Bring right neighbour to the current node
-        
+                
         # Get the number of random sites to modify (50% of the lattice by default)
         if n == -1:
             n = int(self.spins.size * 0.5)
@@ -136,8 +232,8 @@ class spinLattice:
         Xs, Ys = pts[:, 0], pts[:, 1]
     
         # Energy cost
-        cost = 2.0 * self.spins * (sUp+sDo+sLe+sRi)
-    
+        cost = self.cost()
+        
         # Conditions to flip the spin
         flip  = (cost < 0) | (np.random.rand(*self.spins.shape) < np.exp(-cost/T))
     
@@ -305,25 +401,38 @@ class spinLattice:
         imgs = [self.thermalEvolution(T) for _ in range(nEvolutions)]
         self.spins = initState
         
-        def init():
-            img.set_data(imgs[0])
-            return (img,)
-
-        def animate(i):
-            img.set_data(imgs[i])
-            return (img,)
-
-        fig = plt.figure()
-        ax  = fig.gca()
-        ax.xaxis.set_visible(False)
-        ax.yaxis.set_visible(False)
-        img = ax.imshow(imgs[0],  cmap='BuPu', origin='bottom')
-        anim = animation.FuncAnimation(fig, animate, init_func=init, frames=len(imgs),
-                                       interval=interval, blit=True, save_count=len(imgs))
-        plt.tight_layout()
+        # Create the animation
+        anim = animateImages(imgs, interval)
         
         # Set up formatting for the movie files
         if saveName:
             anim.save('{}.gif'.format(saveName), writer='imagemagick', fps=60)
 
         return anim
+
+
+def animateImages(imgs, interval=50):
+
+    '''
+    Return an animation made of several images.
+    imgs = list of 2D np.array.
+    '''
+    
+    def init():
+        img.set_data(imgs[0])
+        return (img,)
+
+    def animate(i):
+        img.set_data(imgs[i])
+        return (img,)
+
+    fig = plt.figure()
+    ax  = fig.gca()
+    ax.xaxis.set_visible(False)
+    ax.yaxis.set_visible(False)
+    img = ax.imshow(imgs[0],  cmap='BuPu', origin='bottom')
+    anim = animation.FuncAnimation(fig, animate, init_func=init, frames=len(imgs),
+                                   interval=interval, blit=True, save_count=len(imgs))
+    plt.tight_layout()
+    
+    return anim
