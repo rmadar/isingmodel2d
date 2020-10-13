@@ -16,8 +16,11 @@ they tend to disappear above the critical temperature.
 | ![](plots/AnimBelowTc.gif) | ![](plots/AnimAboveTc.gif) |
 
 
+The following shows a 500x500 spin lattice evolving under a temperature T=2.1 for different
+number of interacting neighbours. The '1 neighbour' system correpond to the usual Ising model
+while 3 and 10 neighbours correponds longer range interactions.
 
-|  1 neighboor | 3 neighboors  |  10 neighboors |
+|  1 neighbour | 3 neighbours  |  10 neighbours |
 |:-----:|:------:|:-----:|
 | ![](plots/AnimInter1.gif) | ![](plots/AnimInter3.gif) | ![](plots/AnimInter10.gif) |
 
