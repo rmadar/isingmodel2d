@@ -5,7 +5,7 @@ The simulation allows for:
   + external magnetic field
   + anisotropy between x and y direction
   + more interacting neighboors
-
+  + distance-dependant interaction, based on a user-defined function V(r)
 
 |  Magnetization(T) |  2-points correlation  |
 |:-----------------:|:----------------------:|
