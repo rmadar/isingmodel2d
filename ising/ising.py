@@ -4,13 +4,15 @@ import matplotlib.animation as animation
 
 class spinLattice:
     
-    def __init__(self, N, externalField=0, Jx=1, Jy=1, Nint=0):
+    def __init__(self, N, externalField=0, Jx=1, Jy=1, Nint=0, interEnergy=None):
         '''
         Create an object 2D spinLattice of size NxN with an 
         external field H (0 by default), and two coupling Jx, 
         Jy in both directions (1 by default). The energy of 
         the system is modified by the external field by adding
-        a term -extH*sum(s).
+        a term -extH*sum(s). The evolution of the interaction energy
+        with the distance can be set using 'interEnergy' argument (by
+        default, V(r) = 1).
 
         Arguments:
         ----------
@@ -19,6 +21,11 @@ class spinLattice:
         Jx: coupling constant in the x-axis
         Jy: coupling constant in the y-axis
         Nint: number of interacting neighboor spins.
+        interEnergy: callable V(r) (default: V(r)=1) such as 
+                     interaction energy between two spins is 
+                        H[si, sj] = - V(r) * Jij * si * sj
+                     where r = d(si, sj) and Jij accounts for
+                     a possible anisotropy.
         '''
         
         self.spins  = 2*np.random.randint(2, size=(N,N))-1
@@ -26,11 +33,14 @@ class spinLattice:
         self.Jx     = Jx
         self.Jy     = Jy
         self.Nint   = Nint
+        self.Vr     = lambda r: 1
         self.cost   = self.costIsing
         self.energy = self.energyIsing
         if self.Nint > 0:
             self.cost = self.costNint
             self.energy = self.energyNint
+        if interEnergy:
+            self.Vr = interEnergy
 
             
     def align(self):
@@ -121,8 +131,8 @@ class spinLattice:
         for i in range(N+1):
             for j in range(N+1):
                 if (i, j) == (0, 0): continue
-                if abs(i) == abs(j): continue
-                J = (i*self.Jx + j*self.Jy) / np.sqrt(i**2+j**2)
+                rij = np.sqrt(i**2+j**2)
+                Jij = (i*self.Jx + j*self.Jy) / rij
                 yStart, yEnd = N+j, -N+j
                 xStart, xEnd = N+i, -N+i
                 if xEnd == 0:
@@ -130,11 +140,11 @@ class spinLattice:
                 if yEnd == 0:
                     yEnd = None
                     
-                energy += - J * self.spins * sPad[yStart:yEnd, xStart:xEnd]
+                energy += - Jij * self.Vr(rij) * self.spins * sPad[yStart:yEnd, xStart:xEnd]
                 Npairs += 1
         
         # Remove double counting of since (i, j) and (i, j) should be counted once.
-        energy /= Npairs                                                                               
+        energy /= Npairs                                                        
         
         # Sum over the lattice and energy due to external field
         return energy.sum() / self.spins.size - self.extH * self.magnetization()
@@ -178,8 +188,8 @@ class spinLattice:
         for i in range(-N, N+1):
             for j in range(-N, N+1):
                 if (i, j) == (0, 0): continue
-                if abs(i) == abs(j): continue
-                J = (abs(i)*self.Jx + abs(j)*self.Jy) / np.sqrt(i**2+j**2)
+                rij = np.sqrt(i**2+j**2)
+                Jij = (abs(i)*self.Jx + abs(j)*self.Jy) / rij
                 yStart, yEnd = N+j, -N+j
                 xStart, xEnd = N+i, -N+i
                 if xEnd == 0:
@@ -187,7 +197,7 @@ class spinLattice:
                 if yEnd == 0:
                     yEnd = None
                     
-                cost += 2 * J * self.spins * sPad[yStart:yEnd, xStart:xEnd]
+                cost += 2 * Jij * self.Vr(rij) * self.spins * sPad[yStart:yEnd, xStart:xEnd]
                                              
         return cost - 2 * self.spins * self.extH 
 
